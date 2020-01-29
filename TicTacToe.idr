@@ -1,5 +1,6 @@
 module TicTacToe
 
+import Control.Monad.State
 import Data.Vect
 
 data SquareBoard : Nat -> Type -> Type where
@@ -7,12 +8,26 @@ data SquareBoard : Nat -> Type -> Type where
 
 data XO = X | O
 
+implementation Eq XO where
+  X == X = True
+  O == O = True
+  _ == _ = False
+
+implementation Enum XO where
+  succ X = O
+  succ O = X
+  pred = succ
+  toNat X = 0
+  toNat O = 1
+  fromNat (S x) = succ (fromNat x)
+  fromNat Z = X
+
 data GameOver a = Winner a | Tie
 
-implementation Eq XO where
-    X == X = True
-    O == O = True
-    _ == _ = False
+record GameState (k : Nat) a where
+  constructor MkGameState
+  whoseTurn : a
+  board : SquareBoard k a
 
 myReplicate : a -> (k : Nat) -> Vect k a
 myReplicate a Z = Nil
@@ -64,3 +79,10 @@ gameState : Eq a => SquareBoard k a -> Maybe (GameOver a)
 gameState b with (checkRows b <+> checkCols b <+> checkMainDiag b <+> checkOtherDiag b)
   | Just x = Just (Winner x)
   | Nothing = if boardFull b then Just Tie else Nothing
+
+ValidMove : GameState k a -> Fin k -> Fin k -> a -> Type
+ValidMove g m n player = (getMarker (board g) m n = Nothing, whoseTurn g = a)
+
+takeTurn : (Eq a, Enum a) => (g : GameState k a) -> (m : Fin k) -> (n : Fin k) -> (player : a) -> {default (Refl, Refl) validMove : ValidMove g m n player} -> GameState k a
+takeTurn g m n player {validMove = (cellFree, _)} =
+  MkGameState (succ (whoseTurn g)) (addToken (board g) m n player {cellFree})
