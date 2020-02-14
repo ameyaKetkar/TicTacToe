@@ -39,6 +39,9 @@ makeBoard a k =  SB $ myReplicate (myReplicate a k) k
 myBoard : SquareBoard 3 XO
 myBoard = makeBoard Nothing 3
 
+ticTacToeStart : GameState 3 XO
+ticTacToeStart = MkGameState X myBoard
+
 getRow : SquareBoard k a -> Fin k -> Vect k (Maybe a)
 getRow (SB v) k = index k v
 
@@ -80,9 +83,9 @@ gameState b with (checkRows b <+> checkCols b <+> checkMainDiag b <+> checkOther
   | Just x = Just (Winner x)
   | Nothing = if boardFull b then Just Tie else Nothing
 
-ValidMove : GameState k a -> Fin k -> Fin k -> a -> Type
-ValidMove g m n player = (getMarker (board g) m n = Nothing, whoseTurn g = a)
+ValidMove : Eq a => GameState k a -> Fin k -> Fin k -> a -> Type
+ValidMove g m n player = (getMarker (board g) m n = Nothing, whoseTurn g = player, gameState (board g) = Nothing)
 
-takeTurn : (Eq a, Enum a) => (g : GameState k a) -> (m : Fin k) -> (n : Fin k) -> (player : a) -> {default (Refl, Refl) validMove : ValidMove g m n player} -> GameState k a
+takeTurn : (Eq a, Enum a) => (g : GameState k a) -> (m : Fin k) -> (n : Fin k) -> (player : a) -> {default (Refl, Refl, Refl) validMove : ValidMove g m n player} -> GameState k a
 takeTurn g m n player {validMove = (cellFree, _)} =
   MkGameState (succ (whoseTurn g)) (addToken (board g) m n player {cellFree})
